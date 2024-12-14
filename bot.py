@@ -1,5 +1,6 @@
 import json
-from telegram import Update, InputMediaPhoto
+import os
+from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 
 # قراءة البيانات من الملفات
@@ -31,11 +32,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if item:
         image_url = get_image_url(item_id)
-        response_text = f"🔹 الوصف: {item.get('description')}\n🔸 التفاصيل: {item.get('description2')}"
+        # تنسيق البيانات كمخرجات JSON
+        response_json = json.dumps({
+            "itemID": item.get("itemID"),
+            "description": item.get("description"),
+            "description2": item.get("description2"),
+            "icon": item.get("icon")
+        }, indent=4)
+        
+        # إرسال الصورة والمعلومات
         if image_url:
-            await update.message.reply_photo(photo=image_url, caption=response_text)
+            await update.message.reply_photo(photo=image_url, caption=f"```json\n{response_json}```", parse_mode="MarkdownV2")
         else:
-            await update.message.reply_text(response_text)
+            await update.message.reply_text(f"```json\n{response_json}```", parse_mode="MarkdownV2")
     else:
         await update.message.reply_text("❌ لم يتم العثور على العنصر المطلوب.")
 
@@ -44,7 +53,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("مرحبًا! أرسل اسم العنصر للبحث عنه.")
 
 def main():
-    TOKEN = "7361470544:AAEitqyfPIq2BFP33Hq38D6J3MxYxV40Q2I"
+    # قراءة التوكن من متغيرات البيئة
+    TOKEN = os.getenv("BOT_TOKEN")
     app = ApplicationBuilder().token(TOKEN).build()
     
     # تعريف الأوامر والردود
