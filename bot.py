@@ -14,10 +14,13 @@ with open("cdn.json", "r") as f:
 def search_item(query):
     for item in items_data:
         if query.lower() in item.get("description", "").lower():
-            item_id = item.get("itemID")
-            description = item.get("description")
-            return item_id, description
-    return None, None
+            return {
+                "itemID": item.get("itemID"),
+                "description": item.get("description"),
+                "description2": item.get("description2"),
+                "icon": item.get("icon")
+            }
+    return None
 
 # دالة البحث عن رابط الصورة في cdn.json
 def get_image_url(item_id):
@@ -29,19 +32,35 @@ def get_image_url(item_id):
 # التعامل مع رسائل المستخدم
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.message.text.strip()  # النص الذي أرسله المستخدم
-    item_id, description = search_item(query)
+    item_data = search_item(query)
     
-    if item_id:
+    if item_data:
+        item_id = item_data["itemID"]
+        description = item_data["description"]
+        description2 = item_data["description2"]
+        icon = item_data["icon"]
+        
+        # البحث عن الصورة
         image_url = get_image_url(item_id)
         
+        # نص المعلومات
+        message_text = (
+            f"🔹 **{description}**\n"
+            f"📄 **الوصف:** {description2}\n"
+            f"🆔 **معرف العنصر:** `{item_id}`\n"
+            f"🖼 **الرمز:** `{icon}`"
+        )
+        
         if image_url:
+            # إرسال الصورة مع النص
             await update.message.reply_photo(
                 photo=image_url, 
-                caption=f"🔹 **{description}**\n\nمعرف العنصر: `{item_id}`",
+                caption=message_text,
                 parse_mode="Markdown"
             )
         else:
-            await update.message.reply_text(f"✅ تم العثور على العنصر **{description}** ولكن لم يتم العثور على صورة له.")
+            # إرسال النص فقط في حالة عدم وجود صورة
+            await update.message.reply_text(message_text, parse_mode="Markdown")
     else:
         await update.message.reply_text("❌ لم يتم العثور على أي نتائج. حاول استخدام كلمة أخرى!")
 
