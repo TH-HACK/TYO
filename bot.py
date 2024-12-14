@@ -29,6 +29,18 @@ def get_image_url(item_id):
             return cdn_entry[item_id]
     return None
 
+# تنسيق البيانات بتنسيق JSON مع رموز
+def format_json_with_emojis(item_data):
+    formatted_json = (
+        "{\n"
+        f"  🔹 \"itemID\": \"{item_data['itemID']}\",\n"
+        f"  📝 \"description\": \"{item_data['description']}\",\n"
+        f"  📄 \"description2\": \"{item_data['description2']}\",\n"
+        f"  🖼 \"icon\": \"{item_data['icon']}\"\n"
+        "}"
+    )
+    return formatted_json
+
 # التعامل مع رسائل المستخدم
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.message.text.strip()  # النص الذي أرسله المستخدم
@@ -36,32 +48,21 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if item_data:
         item_id = item_data["itemID"]
-        description = item_data["description"]
-        description2 = item_data["description2"]
-        icon = item_data["icon"]
-        
-        # البحث عن الصورة
         image_url = get_image_url(item_id)
         
-        # نص المعلومات - منسق بشكل جميل
-        message_text = (
-            f"✨ **معلومات العنصر** ✨\n\n"
-            f"🔹 **الاسم:** `{description}`\n"
-            f"📝 **الوصف:**\n    {description2}\n"
-            f"🆔 **المعرف:** `{item_id}`\n"
-            f"🖼 **الأيقونة:** `{icon}`"
-        )
+        # تنسيق البيانات بتنسيق JSON
+        formatted_message = f"✨ **معلومات العنصر بتنسيق JSON** ✨\n```json\n{format_json_with_emojis(item_data)}\n```"
         
         if image_url:
             # إرسال الصورة مع النص
             await update.message.reply_photo(
                 photo=image_url, 
-                caption=message_text,
+                caption=formatted_message,
                 parse_mode="Markdown"
             )
         else:
             # إرسال النص فقط في حالة عدم وجود صورة
-            await update.message.reply_text(message_text, parse_mode="Markdown")
+            await update.message.reply_text(formatted_message, parse_mode="Markdown")
     else:
         await update.message.reply_text("🚫 **لم يتم العثور على أي نتائج!**\n🔍 حاول استخدام كلمة أخرى.", parse_mode="Markdown")
 
@@ -70,7 +71,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "👋 **مرحبًا بك في بوت البحث عن العناصر!**\n\n"
         "🔍 أرسل اسم العنصر أو جزءًا من اسمه للبحث عنه.\n"
-        "📄 سأقوم بعرض المعلومات مع الصورة إذا كانت متاحة."
+        "📄 سأقوم بعرض المعلومات بتنسيق JSON مع الصورة إذا كانت متاحة."
     )
 
 # نقطة بدء تشغيل البوت
