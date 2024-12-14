@@ -15,53 +15,51 @@ def search_item(query):
     for item in items_data:
         if query.lower() in item.get("description", "").lower():
             item_id = item.get("itemID")
-            return item, item_id
+            description = item.get("description")
+            return item_id, description
     return None, None
 
-# دالة جلب رابط الصورة بناءً على itemID
+# دالة البحث عن رابط الصورة في cdn.json
 def get_image_url(item_id):
     for cdn_entry in cdn_data:
         if item_id in cdn_entry:
             return cdn_entry[item_id]
     return None
 
-# دالة الرد عند استقبال كلمات البحث
+# التعامل مع رسائل المستخدم
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.message.text.strip()
-    item, item_id = search_item(query)
+    query = update.message.text.strip()  # النص الذي أرسله المستخدم
+    item_id, description = search_item(query)
     
-    if item:
+    if item_id:
         image_url = get_image_url(item_id)
-        # تنسيق البيانات كمخرجات JSON
-        response_json = json.dumps({
-            "itemID": item.get("itemID"),
-            "description": item.get("description"),
-            "description2": item.get("description2"),
-            "icon": item.get("icon")
-        }, indent=4)
         
-        # إرسال الصورة والمعلومات
         if image_url:
-            await update.message.reply_photo(photo=image_url, caption=f"```json\n{response_json}```", parse_mode="MarkdownV2")
+            await update.message.reply_photo(
+                photo=image_url, 
+                caption=f"🔹 **{description}**\n\nمعرف العنصر: `{item_id}`",
+                parse_mode="Markdown"
+            )
         else:
-            await update.message.reply_text(f"```json\n{response_json}```", parse_mode="MarkdownV2")
+            await update.message.reply_text(f"✅ تم العثور على العنصر **{description}** ولكن لم يتم العثور على صورة له.")
     else:
-        await update.message.reply_text("❌ لم يتم العثور على العنصر المطلوب.")
+        await update.message.reply_text("❌ لم يتم العثور على أي نتائج. حاول استخدام كلمة أخرى!")
 
-# بدء البوت وتوجيه الرسائل
+# بدء البوت عند إرسال أمر /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("مرحبًا! أرسل اسم العنصر للبحث عنه.")
+    await update.message.reply_text("مرحبًا بك! أرسل اسم العنصر للبحث عنه 🔍.")
 
+# نقطة بدء تشغيل البوت
 def main():
     # قراءة التوكن من متغيرات البيئة
     TOKEN = os.getenv("BOT_TOKEN")
     app = ApplicationBuilder().token(TOKEN).build()
     
-    # تعريف الأوامر والردود
+    # ربط الأوامر والرسائل
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
-    print("البوت يعمل الآن...")
+    
+    print("✅ البوت يعمل الآن...")
     app.run_polling()
 
 if __name__ == "__main__":
