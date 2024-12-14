@@ -43,12 +43,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # البحث عن الصورة
         image_url = get_image_url(item_id)
         
-        # نص المعلومات
+        # نص المعلومات - منسق بشكل جميل
         message_text = (
-            f"🔹 **{description}**\n"
-            f"📄 **الوصف:** {description2}\n"
-            f"🆔 **معرف العنصر:** `{item_id}`\n"
-            f"🖼 **الرمز:** `{icon}`"
+            f"✨ **معلومات العنصر** ✨\n\n"
+            f"🔹 **الاسم:** `{description}`\n"
+            f"📝 **الوصف:**\n    {description2}\n"
+            f"🆔 **المعرف:** `{item_id}`\n"
+            f"🖼 **الأيقونة:** `{icon}`"
         )
         
         if image_url:
@@ -62,11 +63,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # إرسال النص فقط في حالة عدم وجود صورة
             await update.message.reply_text(message_text, parse_mode="Markdown")
     else:
-        await update.message.reply_text("❌ لم يتم العثور على أي نتائج. حاول استخدام كلمة أخرى!")
+        await update.message.reply_text("🚫 **لم يتم العثور على أي نتائج!**\n🔍 حاول استخدام كلمة أخرى.", parse_mode="Markdown")
 
 # بدء البوت عند إرسال أمر /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("مرحبًا بك! أرسل اسم العنصر للبحث عنه 🔍.")
+    await update.message.reply_text(
+        "👋 **مرحبًا بك في بوت البحث عن العناصر!**\n\n"
+        "🔍 أرسل اسم العنصر أو جزءًا من اسمه للبحث عنه.\n"
+        "📄 سأقوم بعرض المعلومات مع الصورة إذا كانت متاحة."
+    )
 
 # نقطة بدء تشغيل البوت
 def main():
