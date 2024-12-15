@@ -19,6 +19,9 @@ except FileNotFoundError:
     print("❌ ملف 'cdn.json' غير موجود!")
     cdn_data = []
 
+# تتبع الأعضاء الذين دخلوا البوت
+members_set = set()  # ستحتفظ هذه المجموعه بمعرفات الأعضاء الذين دخلوا البوت فقط
+
 # دالة البحث عن العنصر
 def search_item(query):
     query = query.lower()
@@ -126,7 +129,18 @@ ADMIN_PANEL_BUTTONS = InlineKeyboardMarkup(
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
 
-    if user_id == 5164991393:  # استبدل YOUR_ADMIN_ID بالـ ID الخاص بك
+    # إشعار دخول المستخدم إذا كان أول مرة
+    if user_id not in members_set:
+        members_set.add(user_id)  # إضافة المعرف إلى مجموعة الأعضاء
+        await update.message.reply_text(
+            f"🎉 **انضم إلينا عضو جديد!**\n\n"
+            f"👤 الاسم: {update.message.from_user.full_name}\n"
+            f"📝 المعرف: @{update.message.from_user.username}\n"
+            f"🔑 ID: {user_id}"
+        )
+
+    # إرسال رسالة للادمن عند الضغط على /start
+    if user_id == YOUR_ADMIN_ID:  # استبدل YOUR_ADMIN_ID بالـ ID الخاص بك
         await update.message.reply_text(
             "🎉 مرحبًا بك في لوحة تحكم الأدمن!",
             reply_markup=ADMIN_PANEL_BUTTONS,
@@ -138,14 +152,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "📄 سأقوم بعرض المعلومات بتنسيق JSON مع الصورة إذا كانت متاحة."
         )
 
-    # إشعار عند دخول مستخدم جديد
-    await update.message.reply_text(
-        f"🎉 **انضم إلينا عضو جديد!**\n\n"
-        f"👤 الاسم: {update.message.from_user.full_name}\n"
-        f"📝 المعرف: @{update.message.from_user.username}\n"
-        f"🔑 ID: {user_id}"
-    )
-
 # التعامل مع الأزرار الخاصة بلوحة التحكم
 async def admin_controls(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -156,9 +162,8 @@ async def admin_controls(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if query.data == "member_count":
-        chat_id = update.message.chat.id
-        chat_member_count = await query.bot.get_chat_members_count(chat_id)
-        await query.message.reply_text(f"📊 عدد الأعضاء في البوت: {chat_member_count}")
+        # عرض عدد الأعضاء الفعلي
+        await query.message.reply_text(f"📊 عدد الأعضاء الذين تفاعلوا مع البوت: {len(members_set)}")
 
     # ميزة الإذاعة
     elif query.data == "broadcast_message":
@@ -171,20 +176,16 @@ async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
 
     # التأكد أن الرسالة هي من الأدمن
-    if user_id != YOUR_ADMIN_ID:
+    if user_id != 5164991393:
         await update.message.reply_text("❌ ليس لديك صلاحيات لإرسال الإذاعة.")
         return
 
     # إرسال الرسالة لجميع الأعضاء الذين تفاعلوا مع البوت
-    # هنا نحتاج إلى قائمة من الأعضاء المتفاعلين مع البوت (لتخزين الأعضاء الذين تفاعلوا يمكن تخزينهم في قائمة داخلية أو قاعدة بيانات)
-    # فرضًا لدينا قائمة `active_users` التي تحتوي على معرفات الأعضاء الذين تفاعلوا مع البوت
-    active_users = [user_id]  # هذه مجرد قائمة افتراضية لتوضيح الفكرة، يمكنك تعديلها بما يتناسب مع البوت.
-
-    for user_id in active_users:
+    for member_id in members_set:
         try:
-            await update.bot.send_message(user_id, message_text)
+            await update.bot.send_message(member_id, message_text)
         except Exception as e:
-            print(f"⚠️ خطأ في إرسال الرسالة إلى {user_id}: {e}")
+            print(f"⚠️ خطأ في إرسال الرسالة إلى {member_id}: {e}")
 
     await update.message.reply_text("✅ تم إرسال الإذاعة إلى جميع الأعضاء.")
 
