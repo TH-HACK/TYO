@@ -114,19 +114,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="Markdown"
         )
 
-# إعداد لوحة تحكم الأدمن
+# إعداد لوحة تحكم الأدمن (بدون الأزرار الخاصة بتفعيل أو تعطيل البوت)
 ADMIN_PANEL_BUTTONS = InlineKeyboardMarkup(
     [
-        [InlineKeyboardButton("✅ تفعيل البوت", callback_data="enable_bot"),
-         InlineKeyboardButton("❌ تعطيل البوت", callback_data="disable_bot")],
-        [InlineKeyboardButton("📊 عدد الأعضاء", callback_data="member_count")]
+        [InlineKeyboardButton("📊 عدد الأعضاء", callback_data="member_count")],
+        [InlineKeyboardButton("📢 إرسال إذاعة لجميع الأعضاء", callback_data="broadcast_message")]
     ]
 )
 
 # التعامل مع أمر /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
-    if user_id == 5164991393:  # استبدل YOUR_ADMIN_ID بالـ ID الخاص بك
+
+    if user_id == YOUR_ADMIN_ID:  # استبدل YOUR_ADMIN_ID بالـ ID الخاص بك
         await update.message.reply_text(
             "🎉 مرحبًا بك في لوحة تحكم الأدمن!",
             reply_markup=ADMIN_PANEL_BUTTONS,
@@ -138,9 +138,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "📄 سأقوم بعرض المعلومات بتنسيق JSON مع الصورة إذا كانت متاحة."
         )
 
+    # إشعار عند دخول مستخدم جديد
+    await update.message.reply_text(
+        f"🎉 **انضم إلينا عضو جديد!**\n\n"
+        f"👤 الاسم: {update.message.from_user.full_name}\n"
+        f"📝 المعرف: @{update.message.from_user.username}\n"
+        f"🔑 ID: {user_id}"
+    )
+
 # التعامل مع الأزرار الخاصة بلوحة التحكم
 async def admin_controls(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global BOT_STATUS
     query = update.callback_query
     user_id = query.from_user.id
 
@@ -148,16 +155,38 @@ async def admin_controls(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer("❌ ليس لديك صلاحيات.", show_alert=True)
         return
 
-    if query.data == "enable_bot":
-        BOT_STATUS = True
-        await query.answer("✅ تم تفعيل البوت.")
-    elif query.data == "disable_bot":
-        BOT_STATUS = False
-        await query.answer("❌ تم تعطيل البوت.")
-    elif query.data == "member_count":
-        # استبدل هنا بطريقة للحصول على عدد الأعضاء، مثلاً:
-        member_count = 100  # هذا مجرد مثال
-        await query.message.reply_text(f"📊 عدد الأعضاء: {member_count}")
+    if query.data == "member_count":
+        chat_id = update.message.chat.id
+        chat_member_count = await query.bot.get_chat_members_count(chat_id)
+        await query.message.reply_text(f"📊 عدد الأعضاء في البوت: {chat_member_count}")
+
+    # ميزة الإذاعة
+    elif query.data == "broadcast_message":
+        await query.message.reply_text("📢 **اكتب الرسالة التي تريد إرسالها إلى جميع الأعضاء:**")
+        await query.message.reply_text("أرسل النص الذي ترغب في إذاعته.")
+
+# التعامل مع الرسائل لإرسال الإذاعة
+async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message_text = update.message.text.strip()
+    user_id = update.message.from_user.id
+
+    # التأكد أن الرسالة هي من الأدمن
+    if user_id != YOUR_ADMIN_ID:
+        await update.message.reply_text("❌ ليس لديك صلاحيات لإرسال الإذاعة.")
+        return
+
+    # إرسال الرسالة لجميع الأعضاء الذين تفاعلوا مع البوت
+    # هنا نحتاج إلى قائمة من الأعضاء المتفاعلين مع البوت (لتخزين الأعضاء الذين تفاعلوا يمكن تخزينهم في قائمة داخلية أو قاعدة بيانات)
+    # فرضًا لدينا قائمة `active_users` التي تحتوي على معرفات الأعضاء الذين تفاعلوا مع البوت
+    active_users = [user_id]  # هذه مجرد قائمة افتراضية لتوضيح الفكرة، يمكنك تعديلها بما يتناسب مع البوت.
+
+    for user_id in active_users:
+        try:
+            await update.bot.send_message(user_id, message_text)
+        except Exception as e:
+            print(f"⚠️ خطأ في إرسال الرسالة إلى {user_id}: {e}")
+
+    await update.message.reply_text("✅ تم إرسال الإذاعة إلى جميع الأعضاء.")
 
 # نقطة بدء تشغيل البوت
 def main():
@@ -168,6 +197,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(CallbackQueryHandler(admin_controls))  # إضافة معالج الأزرار
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, broadcast))  # إضافة معالج للإذاعة
 
     print("✅ البوت يعمل الآن...")
     app.run_polling()
