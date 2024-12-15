@@ -33,14 +33,14 @@ def search_item(query):
     return None
 
 # البحث في cdn.json
-def get_image_url(item_id):
+def get_image_url_from_cdn(item_id):
     for cdn_entry in cdn_data:
         if item_id in cdn_entry:
             return cdn_entry[item_id]
     return None
 
-# البحث في GitHub
-def search_github_image(icon_name):
+# البحث عن الصورة في المجلد المحدد على GitHub
+def search_image_in_github(icon_name):
     github_api_url = "https://api.github.com/repos/jinix6/ff-resources/contents/pngs/300x300"
     try:
         response = requests.get(github_api_url)
@@ -50,20 +50,20 @@ def search_github_image(icon_name):
                 if icon_name in file["name"]:  # تحقق من وجود الأيقونة
                     return file["download_url"]  # رابط التنزيل المباشر
         else:
-            print(f"❌ خطأ أثناء الوصول إلى GitHub: {response.status_code}")
+            print(f"❌ خطأ أثناء الوصول إلى GitHub API: {response.status_code}")
     except Exception as e:
-        print(f"⚠️ حدث خطأ أثناء الاتصال بـ GitHub: {e}")
+        print(f"⚠️ حدث خطأ أثناء الاتصال بـ GitHub API: {e}")
     return None
 
 # البحث عن الصورة (cdn أو GitHub)
-def get_image_url_or_github(icon_name):
+def get_image_url(icon_name, item_id):
     # البحث في cdn.json
-    image_url = get_image_url(icon_name)
+    image_url = get_image_url_from_cdn(item_id)
     if image_url:
         return image_url
     
-    # البحث في GitHub
-    github_image_url = search_github_image(icon_name)
+    # البحث في مجلد GitHub باستخدام API
+    github_image_url = search_image_in_github(icon_name)
     if github_image_url:
         return github_image_url
 
@@ -89,7 +89,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if item_data:
         icon_name = item_data["icon"]
-        image_url = get_image_url_or_github(icon_name)
+        item_id = item_data["itemID"]
+        image_url = get_image_url(icon_name, item_id)
         
         # تنسيق البيانات بتنسيق JSON
         formatted_message = f"✨ **معلومات العنصر بتنسيق JSON** ✨\n```json\n{format_json_with_emojis(item_data)}\n```"
