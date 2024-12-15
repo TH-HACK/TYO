@@ -126,7 +126,7 @@ ADMIN_PANEL_BUTTONS = InlineKeyboardMarkup(
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
 
-    if user_id == YOUR_ADMIN_ID:  # استبدل YOUR_ADMIN_ID بالـ ID الخاص بك
+    if user_id == 5164991393:  # استبدل YOUR_ADMIN_ID بالـ ID الخاص بك
         await update.message.reply_text(
             "🎉 مرحبًا بك في لوحة تحكم الأدمن!",
             reply_markup=ADMIN_PANEL_BUTTONS,
