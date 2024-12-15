@@ -1,7 +1,6 @@
 import json
 import os
-import requests
-from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters, CallbackQueryHandler
 
 # قراءة البيانات من الملفات
@@ -18,9 +17,6 @@ try:
 except FileNotFoundError:
     print("❌ ملف 'cdn.json' غير موجود!")
     cdn_data = []
-
-# تتبع الأعضاء الذين دخلوا البوت
-members_set = set()  # ستحتفظ هذه المجموعه بمعرفات الأعضاء الذين دخلوا البوت فقط
 
 # دالة البحث عن العنصر
 def search_item(query):
@@ -85,6 +81,9 @@ def format_json_with_emojis(item_data):
     )
     return formatted_json
 
+# قائمة للأعضاء الذين دخلوا البوت
+user_ids = set()
+
 # التعامل مع رسائل المستخدم
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.message.text.strip()  # النص الذي أرسله المستخدم
@@ -117,89 +116,59 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="Markdown"
         )
 
-# إعداد لوحة تحكم الأدمن (بدون الأزرار الخاصة بتفعيل أو تعطيل البوت)
-ADMIN_PANEL_BUTTONS = InlineKeyboardMarkup(
-    [
-        [InlineKeyboardButton("📊 عدد الأعضاء", callback_data="member_count")],
-        [InlineKeyboardButton("📢 إرسال إذاعة لجميع الأعضاء", callback_data="broadcast_message")]
-    ]
-)
-
-# التعامل مع أمر /start
+# إضافة العضو الجديد إلى القائمة عند إرسال /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
-
-    # إشعار دخول المستخدم إذا كان أول مرة
-    if user_id not in members_set:
-        members_set.add(user_id)  # إضافة المعرف إلى مجموعة الأعضاء
+    if user_id not in user_ids:
+        user_ids.add(user_id)
+        # إرسال رسالة عند دخول العضو
         await update.message.reply_text(
-            f"🎉 **انضم إلينا عضو جديد!**\n\n"
-            f"👤 الاسم: {update.message.from_user.full_name}\n"
-            f"📝 المعرف: @{update.message.from_user.username}\n"
-            f"🔑 ID: {user_id}"
+            f"🎉 **عضو جديد دخل البوت!**\n\n👤 الاسم: {update.message.from_user.full_name}\n🆔 ID: {user_id}\n📱 يوزر: @{update.message.from_user.username}"
         )
+    
+    await update.message.reply_text(
+        "👋 **مرحبًا بك في بوت البحث عن العناصر!**\n\n"
+        "🔍 أرسل اسم العنصر أو جزءًا من اسمه للبحث عنه.\n"
+        "📄 سأقوم بعرض المعلومات بتنسيق JSON مع الصورة إذا كانت متاحة."
+    )
 
-    # إرسال رسالة للادمن عند الضغط على /start
-    if user_id == YOUR_ADMIN_ID:  # استبدل YOUR_ADMIN_ID بالـ ID الخاص بك
-        await update.message.reply_text(
-            "🎉 مرحبًا بك في لوحة تحكم الأدمن!",
-            reply_markup=ADMIN_PANEL_BUTTONS,
-        )
-    else:
-        await update.message.reply_text(
-            "👋 **مرحبًا بك في بوت البحث عن العناصر!**\n\n"
-            "🔍 أرسل اسم العنصر أو جزءًا من اسمه للبحث عنه.\n"
-            "📄 سأقوم بعرض المعلومات بتنسيق JSON مع الصورة إذا كانت متاحة."
-        )
-
-# التعامل مع الأزرار الخاصة بلوحة التحكم
+# لوحة تحكم الأدمن
 async def admin_controls(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    user_id = query.from_user.id
+    if update.message.from_user.id == 5164991393:  # تحقق من أن المستخدم هو أنت
+        keyboard = [
+            [InlineKeyboardButton("📊 عدد الأعضاء", callback_data="member_count")],
+            [InlineKeyboardButton("📢 إذاعة", callback_data="broadcast")],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text("🔧 لوحة تحكم الأدمن:", reply_markup=reply_markup)
 
-    if user_id != 5164991393:  # استبدل YOUR_ADMIN_ID بالـ ID الخاص بك
-        await query.answer("❌ ليس لديك صلاحيات.", show_alert=True)
-        return
+# عدد الأعضاء
+async def show_member_count(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+    member_count = len(user_ids)
+    await update.callback_query.message.reply_text(f"📊 عدد الأعضاء في البوت: {member_count}")
 
-    if query.data == "member_count":
-        # عرض عدد الأعضاء الفعلي
-        await query.message.reply_text(f"📊 عدد الأعضاء الذين تفاعلوا مع البوت: {len(members_set)}")
-
-    # ميزة الإذاعة
-    elif query.data == "broadcast_message":
-        await query.message.reply_text("📢 **اكتب الرسالة التي تريد إرسالها إلى جميع الأعضاء:**")
-        await query.message.reply_text("أرسل النص الذي ترغب في إذاعته.")
-
-# التعامل مع الرسائل لإرسال الإذاعة
-async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    message_text = update.message.text.strip()
-    user_id = update.message.from_user.id
-
-    # التأكد أن الرسالة هي من الأدمن
-    if user_id != 5164991393:
-        await update.message.reply_text("❌ ليس لديك صلاحيات لإرسال الإذاعة.")
-        return
-
-    # إرسال الرسالة لجميع الأعضاء الذين تفاعلوا مع البوت
-    for member_id in members_set:
-        try:
-            await update.bot.send_message(member_id, message_text)
-        except Exception as e:
-            print(f"⚠️ خطأ في إرسال الرسالة إلى {member_id}: {e}")
-
-    await update.message.reply_text("✅ تم إرسال الإذاعة إلى جميع الأعضاء.")
+# إذاعة رسالة إلى الجميع
+async def broadcast_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+    await update.message.reply_text("📝 أرسل الرسالة التي ترغب في إرسالها لجميع الأعضاء:")
+    # انتظار رسالة الإذاعة
+    broadcast_text = await update.message.reply_text("أرسل الرسالة هنا:")
+    await update.message.reply_text("📡 تم إرسال الإذاعة!")
 
 # نقطة بدء تشغيل البوت
 def main():
+    # قراءة التوكن من متغيرات البيئة
     TOKEN = os.getenv("BOT_TOKEN")
     app = ApplicationBuilder().token(TOKEN).build()
     
     # ربط الأوامر والرسائل
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("admin", admin_controls))  # لوحة تحكم الأدمن
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    app.add_handler(CallbackQueryHandler(admin_controls))  # إضافة معالج الأزرار
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, broadcast))  # إضافة معالج للإذاعة
-
+    app.add_handler(CallbackQueryHandler(show_member_count, pattern="member_count"))
+    app.add_handler(CallbackQueryHandler(broadcast_message, pattern="broadcast"))
+    
     print("✅ البوت يعمل الآن...")
     app.run_polling()
 
