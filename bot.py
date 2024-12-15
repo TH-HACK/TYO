@@ -1,8 +1,8 @@
 import json
 import os
 import requests
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters, CallbackQueryHandler
 
 # قراءة البيانات من الملفات
 try:
@@ -114,24 +114,61 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="Markdown"
         )
 
-# بدء البوت عند إرسال أمر /start
+# إعداد لوحة تحكم الأدمن
+ADMIN_PANEL_BUTTONS = InlineKeyboardMarkup(
+    [
+        [InlineKeyboardButton("✅ تفعيل البوت", callback_data="enable_bot"),
+         InlineKeyboardButton("❌ تعطيل البوت", callback_data="disable_bot")],
+        [InlineKeyboardButton("📊 عدد الأعضاء", callback_data="member_count")]
+    ]
+)
+
+# التعامل مع أمر /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "👋 **مرحبًا بك في بوت البحث عن العناصر!**\n\n"
-        "🔍 أرسل اسم العنصر أو جزءًا من اسمه للبحث عنه.\n"
-        "📄 سأقوم بعرض المعلومات بتنسيق JSON مع الصورة إذا كانت متاحة."
-    )
+    user_id = update.message.from_user.id
+    if user_id == 5164991393:  # استبدل YOUR_ADMIN_ID بالـ ID الخاص بك
+        await update.message.reply_text(
+            "🎉 مرحبًا بك في لوحة تحكم الأدمن!",
+            reply_markup=ADMIN_PANEL_BUTTONS,
+        )
+    else:
+        await update.message.reply_text(
+            "👋 **مرحبًا بك في بوت البحث عن العناصر!**\n\n"
+            "🔍 أرسل اسم العنصر أو جزءًا من اسمه للبحث عنه.\n"
+            "📄 سأقوم بعرض المعلومات بتنسيق JSON مع الصورة إذا كانت متاحة."
+        )
+
+# التعامل مع الأزرار الخاصة بلوحة التحكم
+async def admin_controls(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global BOT_STATUS
+    query = update.callback_query
+    user_id = query.from_user.id
+
+    if user_id != 5164991393:  # استبدل YOUR_ADMIN_ID بالـ ID الخاص بك
+        await query.answer("❌ ليس لديك صلاحيات.", show_alert=True)
+        return
+
+    if query.data == "enable_bot":
+        BOT_STATUS = True
+        await query.answer("✅ تم تفعيل البوت.")
+    elif query.data == "disable_bot":
+        BOT_STATUS = False
+        await query.answer("❌ تم تعطيل البوت.")
+    elif query.data == "member_count":
+        # استبدل هنا بطريقة للحصول على عدد الأعضاء، مثلاً:
+        member_count = 100  # هذا مجرد مثال
+        await query.message.reply_text(f"📊 عدد الأعضاء: {member_count}")
 
 # نقطة بدء تشغيل البوت
 def main():
-    # قراءة التوكن من متغيرات البيئة
     TOKEN = os.getenv("BOT_TOKEN")
     app = ApplicationBuilder().token(TOKEN).build()
     
     # ربط الأوامر والرسائل
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    
+    app.add_handler(CallbackQueryHandler(admin_controls))  # إضافة معالج الأزرار
+
     print("✅ البوت يعمل الآن...")
     app.run_polling()
 
